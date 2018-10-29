@@ -16,8 +16,7 @@ export CROSS_COMPILE=/home/reza/skyark/aarch64-linux-android-4.9/bin/aarch64-lin
 export CLANG_TCHAIN="/home/reza/clang-prebuilt-7.0.2/bin/clang"
 export KBUILD_COMPILER_STRING="$(${CLANG_TCHAIN} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 
-make clean O=out/
-make mrproper O=out/
+
 
 make mido_defconfig O=out/
 
