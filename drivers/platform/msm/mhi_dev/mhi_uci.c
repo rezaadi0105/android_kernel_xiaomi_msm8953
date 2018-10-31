@@ -290,6 +290,119 @@ static unsigned int mhi_uci_client_poll(struct file *file, poll_table *wait)
 	return mask;
 }
 
+static int mhi_uci_alloc_write_reqs(struct uci_client *client)
+{
+	int i;
+
+	client->wreqs = kcalloc(MAX_UCI_WR_REQ,
+				sizeof(struct mhi_req),
+				GFP_KERNEL);
+	if (!client->wreqs) {
+		uci_log(UCI_DBG_ERROR, "Write reqs alloc failed\n");
+		return -ENOMEM;
+	}
+
+	INIT_LIST_HEAD(&client->wr_req_list);
+	for (i = 0; i < MAX_UCI_WR_REQ; ++i)
+		list_add_tail(&client->wreqs[i].list, &client->wr_req_list);
+
+	uci_log(UCI_DBG_INFO,
+		"UCI write reqs allocation successful\n");
+	return 0;
+}
+
+static int mhi_uci_read_async(struct uci_client *uci_handle,
+			struct mhi_req *ureq, int *bytes_avail)
+{
+	int ret_val = 0;
+	unsigned long compl_ret;
+
+	uci_log(UCI_DBG_ERROR,
+		"Async read for ch %d\n", uci_handle->in_chan);
+
+	ureq->mode = IPA_DMA_ASYNC;
+	ureq->client_cb = mhi_uci_read_completion_cb;
+	ureq->snd_cmpl = 1;
+	ureq->context = uci_handle;
+
+	reinit_completion(&uci_handle->read_done);
+
+	*bytes_avail = mhi_dev_read_channel(ureq);
+	uci_log(UCI_DBG_VERBOSE, "buf_size = 0x%x bytes_read = 0x%x\n",
+		ureq->len, *bytes_avail);
+	if (*bytes_avail < 0) {
+		uci_log(UCI_DBG_ERROR, "Failed to read channel ret %d\n",
+			*bytes_avail);
+		return -EIO;
+	}
+
+	if (*bytes_avail > 0) {
+		uci_log(UCI_DBG_VERBOSE,
+			"Waiting for async read completion!\n");
+		compl_ret =
+			wait_for_completion_interruptible_timeout(
+			&uci_handle->read_done,
+			MHI_UCI_ASYNC_READ_TIMEOUT);
+
+		if (compl_ret == -ERESTARTSYS) {
+			uci_log(UCI_DBG_ERROR, "Exit signal caught\n");
+			return compl_ret;
+		} else if (compl_ret == 0) {
+			uci_log(UCI_DBG_ERROR, "Read timed out for ch %d\n",
+				uci_handle->in_chan);
+			return -EIO;
+		}
+		uci_log(UCI_DBG_VERBOSE,
+			"wk up Read completed on ch %d\n", ureq->chan);
+
+		uci_handle->pkt_loc = (void *)ureq->buf;
+		uci_handle->pkt_size = ureq->transfer_len;
+
+		uci_log(UCI_DBG_VERBOSE,
+			"Got pkt of sz 0x%x at adr %pK, ch %d\n",
+			uci_handle->pkt_size,
+			ureq->buf, ureq->chan);
+	} else {
+		uci_handle->pkt_loc = NULL;
+		uci_handle->pkt_size = 0;
+	}
+
+	return ret_val;
+}
+
+static int mhi_uci_read_sync(struct uci_client *uci_handle,
+			struct mhi_req *ureq, int *bytes_avail)
+{
+	int ret_val = 0;
+
+	ureq->mode = IPA_DMA_SYNC;
+	*bytes_avail = mhi_dev_read_channel(ureq);
+
+	uci_log(UCI_DBG_VERBOSE, "buf_size = 0x%x bytes_read = 0x%x\n",
+		ureq->len, *bytes_avail);
+
+	if (*bytes_avail < 0) {
+		uci_log(UCI_DBG_ERROR, "Failed to read channel ret %d\n",
+			*bytes_avail);
+		return -EIO;
+	}
+
+	if (*bytes_avail > 0) {
+		uci_handle->pkt_loc = (void *)ureq->buf;
+		uci_handle->pkt_size = ureq->transfer_len;
+
+		uci_log(UCI_DBG_VERBOSE,
+			"Got pkt of sz 0x%x at adr %pK, ch %d\n",
+			uci_handle->pkt_size,
+			ureq->buf, ureq->chan);
+	} else {
+		uci_handle->pkt_loc = NULL;
+		uci_handle->pkt_size = 0;
+	}
+
+	return ret_val;
+}
+
 static int open_client_mhi_channels(struct uci_client *uci_client)
 {
 	int rc = 0;
