@@ -7,13 +7,13 @@ export ARCH=arm64
 export SUBARCH=arm64
 
 
-export CLANG_PATH=/home/reza/clang-prebuilt-7.0.2/bin
+export CLANG_PATH=/home/reza/clang-8.0.3/bin
 export PATH=${CLANG_PATH}:${PATH}
 export CLANG_TRIPLE=aarch64-linux-gnu-
 
-export CROSS_COMPILE=/home/reza/skyark/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+export CROSS_COMPILE=/home/reza/toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-
 
-export CLANG_TCHAIN="/home/reza/clang-prebuilt-7.0.2/bin/clang"
+export CLANG_TCHAIN="/home/reza/clang-8.0.3/bin/clang"
 export KBUILD_COMPILER_STRING="$(${CLANG_TCHAIN} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 
 make clean O=out/
