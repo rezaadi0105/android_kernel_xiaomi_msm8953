@@ -1096,6 +1096,7 @@ CONFIG_HAVE_BPF_JIT=y
 # Custom Hotplug drivers
 #
 CONFIG_CUSTOM_HOTPLUG=y
+CONFIG_AUTOSMP=y
 
 #
 # Device Drivers
