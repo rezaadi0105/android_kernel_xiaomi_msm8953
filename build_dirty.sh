@@ -50,10 +50,6 @@ make_zip()
 
 }
 
-rm -rf out
-mkdir -p out
-make clean O=out/
-make mrproper O=out/
 make mido_defconfig O=out/
 make -j$(nproc --all) O=out/
 make_zip
