@@ -998,37 +998,7 @@ static void schedule_external_copy(struct thin_c *tc, dm_block_t virt_block,
 
 static void set_pool_mode(struct pool *pool, enum pool_mode new_mode);
 
-static void requeue_bios(struct pool *pool);
-
-static bool is_read_only_pool_mode(enum pool_mode mode)
-{
-	return (mode == PM_OUT_OF_METADATA_SPACE || mode == PM_READ_ONLY);
-}
-
-static bool is_read_only(struct pool *pool)
-{
-	return is_read_only_pool_mode(get_pool_mode(pool));
-}
-
-static void check_for_metadata_space(struct pool *pool)
-{
-	int r;
-	const char *ooms_reason = NULL;
-	dm_block_t nr_free;
-
-	r = dm_pool_get_free_metadata_block_count(pool->pmd, &nr_free);
-	if (r)
-		ooms_reason = "Could not get free metadata blocks";
-	else if (!nr_free)
-		ooms_reason = "No free metadata blocks";
-
-	if (ooms_reason && !is_read_only(pool)) {
-		DMERR("%s", ooms_reason);
-		set_pool_mode(pool, PM_OUT_OF_METADATA_SPACE);
-	}
-}
-
-static void check_for_data_space(struct pool *pool)
+static void check_for_space(struct pool *pool)
 {
 	int r;
 	dm_block_t nr_free;
@@ -1040,10 +1010,8 @@ static void check_for_data_space(struct pool *pool)
 	if (r)
 		return;
 
-	if (nr_free) {
+	if (nr_free)
 		set_pool_mode(pool, PM_WRITE);
-		requeue_bios(pool);
-	}
 }
 
 /*
@@ -1122,10 +1090,7 @@ static int alloc_data_block(struct thin_c *tc, dm_block_t *result)
 
 	r = dm_pool_alloc_data_block(pool->pmd, result);
 	if (r) {
-		if (r == -ENOSPC)
-			set_pool_mode(pool, PM_OUT_OF_DATA_SPACE);
-		else
-			metadata_operation_failed(pool, "dm_pool_alloc_data_block", r);
+		metadata_operation_failed(pool, "dm_pool_alloc_data_block", r);
 		return r;
 	}
 
