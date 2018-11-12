@@ -120,6 +120,7 @@ int config_ep_by_speed(struct usb_gadget *g,
 			struct usb_function *f,
 			struct usb_ep *_ep)
 {
+	struct usb_composite_dev	*cdev = get_gadget_data(g);
 	struct usb_endpoint_descriptor *chosen_desc = NULL;
 	struct usb_descriptor_header **speed_desc = NULL;
 
@@ -186,12 +187,8 @@ ep_found:
 			_ep->maxburst = comp_desc->bMaxBurst + 1;
 			break;
 		default:
-			if (comp_desc->bMaxBurst != 0) {
-				struct usb_composite_dev *cdev;
-
-				cdev = get_gadget_data(g);
+			if (comp_desc->bMaxBurst != 0)
 				ERROR(cdev, "ep0 bMaxBurst must be 0\n");
-			}
 			_ep->maxburst = 1;
 			break;
 		}
@@ -416,9 +413,15 @@ int usb_func_wakeup(struct usb_function *func)
 
 	spin_lock_irqsave(&func->config->cdev->lock, flags);
 	ret = usb_func_wakeup_int(func);
-	if (ret == -EAGAIN) {
+	if (ret == -EACCES) {
 		DBG(func->config->cdev,
 			"Function wakeup for %s could not complete due to suspend state. Delayed until after bus resume.\n",
+			func->name ? func->name : "");
+		ret = 0;
+		func->func_wakeup_pending = 1;
+	} else if (ret == -EAGAIN) {
+		DBG(func->config->cdev,
+			"Function wakeup for %s sent.\n",
 			func->name ? func->name : "");
 		ret = 0;
 	} else if (ret < 0 && ret != -ENOTSUPP) {
@@ -451,7 +454,12 @@ int usb_func_ep_queue(struct usb_function *func, struct usb_ep *ep,
 
 	if (func->func_is_suspended && func->func_wakeup_allowed) {
 		ret = usb_gadget_func_wakeup(gadget, func->intf_id);
-		if (ret == -EAGAIN) {
+		if (ret == -EACCES) {
+			pr_debug("bus suspended func wakeup for %s delayed until bus resume.\n",
+				func->name ? func->name : "");
+			func->func_wakeup_pending = 1;
+			ret = -EAGAIN;
+		} else if (ret == -EAGAIN) {
 			pr_debug("bus suspended func wakeup for %s delayed until bus resume.\n",
 				func->name ? func->name : "");
 		} else if (ret < 0 && ret != -ENOTSUPP) {
@@ -1924,6 +1932,16 @@ unknown:
 				}
 				break;
 			}
+
+			if (value < 0) {
+				DBG(cdev, "%s: unhandled os desc request\n",
+						__func__);
+				DBG(cdev, "req%02x.%02x v%04x i%04x l%d\n",
+					ctrl->bRequestType, ctrl->bRequest,
+					w_value, w_index, w_length);
+				return value;
+			}
+
 			req->length = value;
 			req->zero = value < w_length;
 			value = usb_ep_queue(gadget->ep0, req, GFP_ATOMIC);
@@ -2071,8 +2089,6 @@ static DEVICE_ATTR_RO(suspended);
 static void __composite_unbind(struct usb_gadget *gadget, bool unbind_driver)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
-	struct usb_gadget_strings	*gstr = cdev->driver->strings[0];
-	struct usb_string		*dev_str = gstr->strings;
 
 	/* composite_disconnect() must already have been called
 	 * by the underlying peripheral controller driver!
@@ -2092,9 +2108,6 @@ static void __composite_unbind(struct usb_gadget *gadget, bool unbind_driver)
 		cdev->driver->unbind(cdev);
 
 	composite_dev_cleanup(cdev);
-
-	if (dev_str[USB_GADGET_MANUFACTURER_IDX].s == cdev->def_manufacturer)
-		dev_str[USB_GADGET_MANUFACTURER_IDX].s = "";
 
 	kfree(cdev->def_manufacturer);
 	kfree(cdev);
@@ -2330,22 +2343,24 @@ composite_resume(struct usb_gadget *gadget)
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->config) {
 		list_for_each_entry(f, &cdev->config->functions, list) {
-			ret = usb_func_wakeup_int(f);
-			if (ret) {
-				if (ret == -EAGAIN) {
-					ERROR(f->config->cdev,
-						"Function wakeup for %s could not complete due to suspend state.\n",
-						f->name ? f->name : "");
-					break;
-				} else if (ret != -ENOTSUPP) {
-					ERROR(f->config->cdev,
-						"Failed to wake function %s from suspend state. ret=%d. Canceling USB request.\n",
-						f->name ? f->name : "",
-						ret);
+			if (f->func_wakeup_pending) {
+				ret = usb_func_wakeup_int(f);
+				if (ret) {
+					if (ret == -EAGAIN) {
+						ERROR(f->config->cdev,
+							"Function wakeup for %s could not complete due to suspend state.\n",
+							f->name ? f->name : "");
+					} else if (ret != -ENOTSUPP) {
+						ERROR(f->config->cdev,
+							"Failed to wake function %s from suspend state. ret=%d. Canceling USB request.\n",
+							f->name ? f->name : "",
+							ret);
+					}
 				}
+				f->func_wakeup_pending = 0;
 			}
 
-			if (f->resume)
+			if (gadget->speed != USB_SPEED_SUPER && f->resume)
 				f->resume(f);
 		}
 

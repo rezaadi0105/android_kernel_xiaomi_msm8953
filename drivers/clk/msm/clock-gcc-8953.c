@@ -1177,9 +1177,6 @@ static struct rcg_clk camss_gp1_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_mclk0_clk_src[] = {
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	F(  19200000,              xo,    1,    0,     0),
-#endif
 	F(  12000000, gpll6_main_div2,    1,    2,    90),
 	F(  24000000, gpll6_main_div2,    1,    2,    45),
 	F(  33330000, gpll0_main_div2,   12,    0,     0),
@@ -2792,6 +2789,7 @@ static struct branch_clk gcc_oxili_timer_clk = {
 	.base = &virt_bases[GFX_BASE],
 	.c = {
 		.dbg_name = "gcc_oxili_timer_clk",
+		.parent = &xo_clk_src.c,
 		.ops = &clk_ops_branch,
 		CLK_INIT(gcc_oxili_timer_clk.c),
 	},

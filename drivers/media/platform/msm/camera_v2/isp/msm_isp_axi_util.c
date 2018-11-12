@@ -1624,6 +1624,13 @@ static int msm_isp_update_deliver_count(struct vfe_device *vfe_dev,
 			goto done;
 		}
 		temp_stream_info->sw_ping_pong_bit ^= 1;
+		if (temp_stream_info->undelivered_request_cnt == 0) {
+			temp_stream_info->current_framedrop_period =
+				MSM_VFE_STREAM_STOP_PERIOD;
+			temp_stream_info->activated_framedrop_period =
+				MSM_VFE_STREAM_STOP_PERIOD;
+			msm_isp_cfg_framedrop_reg(vfe_dev, temp_stream_info);
+		}
 	}
 done:
 	return rc;
@@ -1635,12 +1642,38 @@ void msm_isp_halt_send_error(struct vfe_device *vfe_dev, uint32_t event)
 	struct msm_isp_event_data error_event;
 	struct msm_vfe_axi_halt_cmd halt_cmd;
 	uint32_t irq_status0, irq_status1;
+	struct vfe_device *vfe_dev_other = NULL;
+	uint32_t vfe_id_other = 0;
+	unsigned long flags;
 
 	if (atomic_read(&vfe_dev->error_info.overflow_state) !=
 		NO_OVERFLOW)
 		/* Recovery is already in Progress */
 		return;
+	/* if there are no active streams - do not start recovery */
+	if (vfe_dev->is_split) {
+		if (vfe_dev->pdev->id == ISP_VFE0)
+			vfe_id_other = ISP_VFE1;
+		else
+			vfe_id_other = ISP_VFE0;
 
+		spin_lock_irqsave(
+			&vfe_dev->common_data->common_dev_data_lock, flags);
+		vfe_dev_other = vfe_dev->common_data->dual_vfe_res->
+			vfe_dev[vfe_id_other];
+		if (!vfe_dev->axi_data.num_active_stream ||
+			!vfe_dev_other->axi_data.num_active_stream) {
+			spin_unlock_irqrestore(
+				&vfe_dev->common_data->common_dev_data_lock,
+				flags);
+			pr_err("%s:skip the recovery as no active streams\n",
+				 __func__);
+			return;
+		}
+		spin_unlock_irqrestore(
+			&vfe_dev->common_data->common_dev_data_lock, flags);
+	} else if (!vfe_dev->axi_data.num_active_stream)
+		return;
 	if (ISP_EVENT_PING_PONG_MISMATCH == event &&
 		vfe_dev->axi_data.recovery_count < MAX_RECOVERY_THRESHOLD) {
 		vfe_dev->hw_info->vfe_ops.irq_ops.
@@ -2976,9 +3009,6 @@ static int msm_isp_start_axi_stream(struct vfe_device *vfe_dev,
 		}
 	}
 	mutex_unlock(&vfe_dev->buf_mgr->lock);
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	msm_isp_update_stream_bandwidth(vfe_dev);
-#else
 	msm_isp_update_stream_bandwidth(vfe_dev, stream_cfg_cmd->hw_state);
 #endif
 	vfe_dev->hw_info->vfe_ops.axi_ops.reload_wm(vfe_dev,
