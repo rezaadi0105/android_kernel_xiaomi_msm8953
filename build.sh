@@ -6,8 +6,6 @@
 # Android Kernel Compilation Script
 #
 
-LC_ALL=C date +%Y-%m-%d
-date=`date +"%Y%m%d-%H%M"`
 BUILD_START=$(date +"%s")
 blue='\033[0;34m'
 cyan='\033[0;36m'
@@ -23,7 +21,7 @@ REPACK_DIR=$KERNEL_DIR/zip
 OUT=$KERNEL_DIR/out
 ZIP_NAME="$VERSION"-"$DATE"
 VERSION="mido-1.7-treble"
-DATE=`date +"%Y%m%d"`
+DATE=$(date +%Y%m%d-%H%M)
 
 export KBUILD_BUILD_USER=reza-adi-pangestu
 export KBUILD_BUILD_HOST=axioo
