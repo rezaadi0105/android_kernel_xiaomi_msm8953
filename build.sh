@@ -1,9 +1,8 @@
 #!/bin/bash
 #
+# Copyright © 2018, "Vipul Jha" aka "LordArcadius" <vipuljha08@gmail.com>
 # Copyright © 2018, "penglezos" <panagiotisegl@gmail.com>
 # Copyright © 2018, "reza adi pangestu" <rezaadipangestu385@gmail.com>
-# Thanks to Vipul Jha for zip creator
-# Android Kernel Compilation Script
 #
 
 BUILD_START=$(date +"%s")
