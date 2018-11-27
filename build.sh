@@ -20,7 +20,7 @@ KERNEL_DIR=$PWD
 REPACK_DIR=$KERNEL_DIR/zip
 OUT=$KERNEL_DIR/out
 ZIP_NAME="$VERSION"-"$DATE"
-VERSION="mido-1.8-treble"
+VERSION="mido-1.8-OandP"
 DATE=$(date +%Y%m%d-%H%M)
 
 export KBUILD_BUILD_USER=reza-adi-pangestu
@@ -38,14 +38,23 @@ export KBUILD_COMPILER_STRING="$(${CLANG_TCHAIN} --version | head -n 1 | perl -p
 make_zip()
 {
 		cd $REPACK_DIR
-		cp $KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb $REPACK_DIR/
+		mkdir kernel
+		mkdir treble
+		mkdir nontreble
+		cp $KERNEL_DIR/out/arch/arm64/boot/dts/qcom/msm8953-qrd-sku3-mido-nontreble.dtb $REPACK_DIR/nontreble/
+		cp $KERNEL_DIR/out/arch/arm64/boot/dts/qcom/msm8953-qrd-sku3-mido-treble.dtb $REPACK_DIR/treble/
+		cp $KERNEL_DIR/out/arch/arm64/boot/Image.gz $REPACK_DIR/kernel/
 		FINAL_ZIP="SkyArk-${VERSION}-${DATE}.zip"
         zip -r9 "${FINAL_ZIP}" *
 		cp *.zip $OUT
 		rm *.zip
+		rm -rf kernel
+		rm -rf treble
+		rm -rf nontreble
 		cd $KERNEL_DIR
-		rm out/arch/arm64/boot/Image.gz-dtb
-
+		rm out/arch/arm64/boot/Image.gz
+		#rm arch/arm64/boot/dts/qcom/msm8953-qrd-sku3-mido-nontreble.dtb
+		#rm arch/arm64/boot/dts/qcom/msm8953-qrd-sku3-mido-treble.dtb
 }
 
 rm -rf out
@@ -58,7 +67,7 @@ make_zip
 
 BUILD_END=$(date +"%s")
 DIFF=$(($BUILD_END - $BUILD_START))
-rm $REPACK_DIR/Image.gz-dtb
+rm $REPACK_DIR/Image.gz
 echo -e ""
 echo -e ""
 echo -e "${red}  ███████╗██╗  ██╗██╗   ██╗ █████╗ ██████╗ ██╗  ██╗    ██╗  ██╗███████╗██████╗ ███╗   ██╗███████╗██╗        " 
