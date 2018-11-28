@@ -1,6 +1,6 @@
 #!/sbin/sh
 # AnyKernel2 Backend
-# osm0sis @ xda-developers
+# osm0sis @ xda-developers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
 
 OUTFD=/proc/self/fd/$2;
 ZIPFILE="$3";
@@ -74,9 +74,30 @@ fi;
 ui_print "$(file_getprop /tmp/anykernel/anykernel.sh kernel.string)";
 if [ -f /tmp/anykernel/version ]; then
   ui_print " ";
-  ui_print "$(cat /tmp/anykernel/version)";
+  while IFS='' read -r line || $bb [[ -n "$line" ]]; do
+    ui_print "$line";
+  done < /tmp/anykernel/version;
   ui_print " ";
 fi;
+ui_print " ";
+ui_print " ";
+ui_print " #####                  #";                  
+ui_print "#     # #    # #   #   # #   #####  #    #";
+ui_print "#       #   #   # #   #   #  #    # #   #"; 
+ui_print " #####  ####     #   #     # #    # ####";  
+ui_print "      # #  #     #   ####### #####  #  #"; 
+ui_print "#     # #   #    #   #     # #   #  #   #";
+ui_print " #####  #    #   #   #     # #    # #    #";
+ui_print " ";                                          
+ui_print "#    #";                                    
+ui_print "#   #  ###### #####  #    # ###### #";    
+ui_print "#  #   #      #    # ##   # #      #";       
+ui_print "###    #####  #    # # #  # #####  #";      
+ui_print "#  #   #      #####  #  # # #      #";     
+ui_print "#   #  #      #   #  #   ## #      #";       
+ui_print "#    # ###### #    # #    # ###### ######";  
+ui_print " ";                                                                                                      
+ui_print " ";                                                   
 ui_print " ";
 ui_print "AnyKernel2 by osm0sis @ xda-developers";
 ui_print " ";
@@ -105,25 +126,6 @@ if [ "$(file_getprop /tmp/anykernel/anykernel.sh do.devicecheck)" == 1 ]; then
   if [ "$match" != 1 ]; then
     abort "Unsupported device. Aborting...";
   fi;
-  ui_print "Checking Android version...";
-  romsdk="$(file_getprop /system/build.prop ro.build.version.sdk)";
-  for i in 1 2; do
-    testsdk="$(file_getprop /tmp/anykernel/anykernel.sh supported.sdk$i)";
-    if [ "$romsdk" == "$testsdk" ]; then
-      ui_print "sdk$testsdk";
-      matchsdk=1;
-      break;
-    fi;
-  done;
-  ui_print " ";
-  if [ "$matchsdk" != 1 ]; then
-    abort "Unsupported Android version. Aborting...":
-  fi;
-  if [ "$(file_getprop /system/build.prop ro.treble.enabled)" == "true" ]; then
-    dtb=/tmp/anykernel/treble;
-  else
-    dtb=/tmp/anykernel/nontreble;
-  fi;
 fi;
 
 if [ -f /system/system/build.prop ]; then
@@ -145,10 +147,6 @@ for i in $($bb --list); do
 done;
 if [ $? != 0 -o -z "$(ls /tmp/anykernel/bin)" ]; then
   abort "Recovery busybox setup failed. Aborting...";
-fi;
-cat /tmp/anykernel/kernel/Image.gz $dtb/*.dtb > /tmp/anykernel/Image.gz-dtb;
-if [ $? != "0" ]; then
-  abort "DTB append failed. Aborting...";
 fi;
 PATH="/tmp/anykernel/bin:$PATH" $bb ash /tmp/anykernel/anykernel.sh $2;
 if [ $? != "0" ]; then

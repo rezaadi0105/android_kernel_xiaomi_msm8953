@@ -10,17 +10,12 @@ do.modules=0
 do.cleanup=1
 do.cleanuponabort=1
 device.name1=mido
-device.name2=redmi note 4
-device.name3=Redmi Note 4
-device.name4=Redmi Note 4x
-supported.sdk1=27
-supported.sdk2=28
 '; } # end properties
 
 # shell variables
 block=/dev/block/platform/soc/7824900.sdhci/by-name/boot;
 is_slot_device=0;
-ramdisk_compression=gz;
+ramdisk_compression=auto;
 
 
 ## AnyKernel methods (DO NOT CHANGE)
@@ -32,6 +27,15 @@ ramdisk_compression=gz;
 # set permissions/ownership for included ramdisk files
 chmod -R 750 $ramdisk/*;
 chown -R root:root $ramdisk/*;
+
+## AnyKernel install
+# don't even think about flashing on non-Treble
+is_treble=$(file_getprop /system/build.prop "ro.treble.enabled");
+if [ ! "$is_treble" -o "$is_treble" == "false" ]; then
+  ui_print " ";
+  ui_print "SkyArk is only compatible with Treble roms";
+  exit 1;
+fi;
 
 ## AnyKernel install
 dump_boot;
