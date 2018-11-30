@@ -5,7 +5,7 @@ import /init.performance_profiles.rc
 
 on property:sys.boot_completed=1
     # Declare support for Franco Kernel Manager Performance Profiles
-    setprop fku.profiles 1
+    setprop fku.profiles 2
 
 on post-fs-data
 
