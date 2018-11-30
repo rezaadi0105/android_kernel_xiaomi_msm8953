@@ -66,7 +66,6 @@ make_zip
 
 BUILD_END=$(date +"%s")
 DIFF=$(($BUILD_END - $BUILD_START))
-rm $REPACK_DIR/Image.gz
 echo -e ""
 echo -e ""
 echo -e "${red}  ███████╗██╗  ██╗██╗   ██╗ █████╗ ██████╗ ██╗  ██╗    ██╗  ██╗███████╗██████╗ ███╗   ██╗███████╗██╗        " 
