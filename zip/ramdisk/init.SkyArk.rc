@@ -11,6 +11,7 @@ on post-fs-data
 
     # Set ZRAM parameters and let qcom-post-boot handle the rest
     setprop ro.vendor.qti.config.zram true
+    write /proc/sys/vm/page-cluster 0
 
 on property:init.svc.qcom-post-boot=stopped
 
@@ -31,10 +32,6 @@ on property:sys.boot_completed=1
     write /sys/block/dm-0/queue/iosched/slice_idle 0
     write /sys/block/dm-1/queue/iosched/slice_idle 0
     write /sys/block/sda/queue/iosched/slice_idle 0
-
-    # Set read ahead to 512kB for internal and 512kB for external storage (rest are handled by qcom-post-boot)
-    write /sys/block/mmcblk0/queue/read_ahead_kb 512
-    write /sys/block/mmcblk1/queue/read_ahead_kb 512
     
     # Disable Yellow Flash
     write /sys/class/leds/led:flash_1/max_brightness 0
