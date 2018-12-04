@@ -11438,8 +11438,11 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
     }
     if(!HAL_STATUS_SUCCESS(status))
     {
-        //If fail to send confirmation to PE, not to trigger roaming
-        fToRoam = eANI_BOOLEAN_FALSE;
+        //remove the connected BSS in infrastructure mode
+        csrRoamRemoveConnectedBssFromScanCache(pMac,
+                                               &pSession->connectedProfile);
+
+        csrScanStartIdleScan(pMac);
     }
 
 
